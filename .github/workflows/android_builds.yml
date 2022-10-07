@@ -44,21 +44,21 @@ jobs:
         with:
           sconsflags: ${{ env.SCONSFLAGS }} android_arch=armv7
           platform: android
-          target: release
-          tools: false
+          target: release_debug
+          tools: true
 
       - name: Compilation (arm64v8)
         uses: ./.github/actions/godot-build
         with:
           sconsflags: ${{ env.SCONSFLAGS }} android_arch=arm64v8
           platform: android
-          target: release
-          tools: false
+          target: release_debug
+          tools: true
 
       - name: Generate Godot templates
         run: |
           cd platform/android/java
-          ./gradlew generateGodotTemplates
+          ./gradlew generateGodotTemplates generateGodotEditor
           cd ../../..
           ls -l bin/
 
