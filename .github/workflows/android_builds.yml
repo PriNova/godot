@@ -58,7 +58,7 @@ jobs:
       - name: Generate Godot templates
         run: |
           cd platform/android/java
-          ./gradlew generateGodotTemplates
+          ./gradlew generateGodotTemplates generateGodotEditor
           cd ../../..
           ls -l bin/
 
