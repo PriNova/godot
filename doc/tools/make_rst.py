@@ -29,10 +29,12 @@ MARKUP_ALLOWED_SUBSEQUENT = " -.,:;!?\\/'\")]}>"
 # write in this script (check `translate()` uses), and also hardcoded in
 # `doc/translations/extract.py` to include them in the source POT file.
 BASE_STRINGS = [
-    "Objects",
+    "All classes",
+    "Globals",
     "Nodes",
     "Resources",
-    "Globals",
+    "Other objects",
+    "Variant types",
     "Description",
     "Tutorials",
     "Properties",
@@ -71,7 +73,13 @@ CLASS_GROUPS: Dict[str, str] = {
     "global": "Globals",
     "node": "Nodes",
     "resource": "Resources",
-    "class": "Objects",
+    "object": "Other objects",
+    "variant": "Variant types",
+}
+CLASS_GROUPS_BASE: Dict[str, str] = {
+    "node": "Node",
+    "resource": "Resource",
+    "object": "Object",
 }
 
 
@@ -687,7 +695,7 @@ def get_git_branch() -> str:
 
 
 def get_class_group(class_def: ClassDef, state: State) -> str:
-    group_name = "class"
+    group_name = "variant"
     class_name = class_def.name
 
     if class_name.startswith("@"):
@@ -701,6 +709,9 @@ def get_class_group(class_def: ClassDef, state: State) -> str:
                 break
             if inherits == "Resource":
                 group_name = "resource"
+                break
+            if inherits == "Object":
+                group_name = "object"
                 break
 
             inode = state.classes[inherits].inherits
@@ -1057,12 +1068,11 @@ def make_rst_class(class_def: ClassDef, state: State, dry_run: bool, output_dir:
             for i, m in enumerate(method_list):
                 if index != 0:
                     f.write("----\n\n")
-
-                if i == 0:
-                    f.write(
-                        f".. _class_{class_name}_operator_{sanitize_operator_name(m.name, state)}_{m.return_type.type_name}:\n\n"
-                    )
-
+                out = f".. _class_{class_name}_operator_{sanitize_operator_name(m.name, state)}"
+                for parameter in m.parameters:
+                    out += f"_{parameter.type_name.type_name}"
+                out += f":\n\n"
+                f.write(out)
                 ret_type, signature = make_method_signature(class_def, m, "", state)
                 f.write(f"- {ret_type} {signature}\n\n")
 
@@ -1168,7 +1178,10 @@ def make_method_signature(
     if isinstance(definition, MethodDef) and ref_type != "":
         if ref_type == "operator":
             op_name = definition.name.replace("<", "\\<")  # So operator "<" gets correctly displayed.
-            out += f":ref:`{op_name}<class_{class_def.name}_{ref_type}_{sanitize_operator_name(definition.name, state)}_{definition.return_type.type_name}>` "
+            out += f":ref:`{op_name}<class_{class_def.name}_{ref_type}_{sanitize_operator_name(definition.name, state)}"
+            for parameter in definition.parameters:
+                out += f"_{parameter.type_name.type_name}"
+            out += f">` "
         else:
             out += f":ref:`{definition.name}<class_{class_def.name}_{ref_type}_{definition.name}>` "
     else:
@@ -1281,6 +1294,10 @@ def make_rst_index(grouped_classes: Dict[str, List[str]], dry_run: bool, output_
 
     f.write(".. _doc_class_reference:\n\n")
 
+    main_title = translate("All classes")
+    f.write(f"{main_title}\n")
+    f.write(f"{'=' * len(main_title)}\n\n")
+
     for group_name in CLASS_GROUPS:
         if group_name in grouped_classes:
             group_title = translate(CLASS_GROUPS[group_name])
@@ -1290,8 +1307,11 @@ def make_rst_index(grouped_classes: Dict[str, List[str]], dry_run: bool, output_
 
             f.write(".. toctree::\n")
             f.write("    :maxdepth: 1\n")
-            f.write("    :name: toc-class-ref-globals\n")
+            f.write(f"    :name: toc-class-ref-{group_name}s\n")
             f.write("\n")
+
+            if group_name in CLASS_GROUPS_BASE:
+                f.write(f"    class_{CLASS_GROUPS_BASE[group_name].lower()}\n")
 
             for class_name in grouped_classes[group_name]:
                 f.write(f"    class_{class_name.lower()}\n")
