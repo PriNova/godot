@@ -34,6 +34,7 @@
 #include "editor/editor_node.h"
 #include "editor/editor_properties.h"
 #include "editor/editor_scale.h"
+#include "editor/editor_settings.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/plugins/animation_player_editor_plugin.h"
 #include "node_3d_editor_plugin.h"
@@ -41,10 +42,12 @@
 #include "scene/3d/joint_3d.h"
 #include "scene/3d/mesh_instance_3d.h"
 #include "scene/3d/physics_body_3d.h"
+#include "scene/gui/separator.h"
 #include "scene/resources/capsule_shape_3d.h"
 #include "scene/resources/skeleton_profile.h"
 #include "scene/resources/sphere_shape_3d.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/scene_string_names.h"
 
 void BoneTransformEditor::create_editors() {
 	const Color section_color = get_theme_color(SNAME("prop_subsection"), SNAME("Editor"));
@@ -397,8 +400,8 @@ void Skeleton3DEditor::create_physical_skeleton() {
 								ur->add_do_method(physical_bone, "set_joint_type", PhysicalBone3D::JOINT_TYPE_PIN);
 							}
 
-							ur->add_do_method(Node3DEditor::get_singleton(), "_request_gizmo", physical_bone);
-							ur->add_do_method(Node3DEditor::get_singleton(), "_request_gizmo", collision_shape);
+							ur->add_do_method(Node3DEditor::get_singleton(), SceneStringNames::get_singleton()->_request_gizmo, physical_bone);
+							ur->add_do_method(Node3DEditor::get_singleton(), SceneStringNames::get_singleton()->_request_gizmo, collision_shape);
 
 							ur->add_do_reference(physical_bone);
 							ur->add_undo_method(skeleton, "remove_child", physical_bone);

@@ -82,7 +82,7 @@ static String get_property_info_type_name(const PropertyInfo &p_info) {
 	return get_builtin_or_variant_type_name(p_info.type);
 }
 
-Dictionary NativeExtensionAPIDump::generate_extension_api() {
+Dictionary GDExtensionAPIDump::generate_extension_api() {
 	Dictionary api_dump;
 
 	{
@@ -177,8 +177,8 @@ Dictionary NativeExtensionAPIDump::generate_extension_api() {
 		};
 
 		// Validate sizes at compile time for the current build configuration.
-		static_assert(type_size_array[Variant::BOOL][sizeof(void *)] == sizeof(GDNativeBool), "Size of bool mismatch");
-		static_assert(type_size_array[Variant::INT][sizeof(void *)] == sizeof(GDNativeInt), "Size of int mismatch");
+		static_assert(type_size_array[Variant::BOOL][sizeof(void *)] == sizeof(GDExtensionBool), "Size of bool mismatch");
+		static_assert(type_size_array[Variant::INT][sizeof(void *)] == sizeof(GDExtensionInt), "Size of int mismatch");
 		static_assert(type_size_array[Variant::FLOAT][sizeof(void *)] == sizeof(double), "Size of float mismatch");
 		static_assert(type_size_array[Variant::STRING][sizeof(void *)] == sizeof(String), "Size of String mismatch");
 		static_assert(type_size_array[Variant::VECTOR2][sizeof(void *)] == sizeof(Vector2), "Size of Vector2 mismatch");
@@ -266,7 +266,7 @@ Dictionary NativeExtensionAPIDump::generate_extension_api() {
 			{ Variant::VECTOR2I, "x", 0, 0, 0, 0 },
 			{ Variant::VECTOR2I, "y", sizeof(int32_t), sizeof(int32_t), sizeof(int32_t), sizeof(int32_t) },
 			{ Variant::RECT2, "position", 0, 0, 0, 0 },
-			{ Variant::RECT2, "size", 2 * sizeof(Vector2), 2 * sizeof(float), 2 * sizeof(double), 2 * sizeof(double) },
+			{ Variant::RECT2, "size", 2 * sizeof(float), 2 * sizeof(float), 2 * sizeof(double), 2 * sizeof(double) },
 			{ Variant::RECT2I, "position", 0, 0, 0, 0 },
 			{ Variant::RECT2I, "size", 2 * sizeof(int32_t), 2 * sizeof(int32_t), 2 * sizeof(int32_t), 2 * sizeof(int32_t) },
 			{ Variant::VECTOR3, "x", 0, 0, 0, 0 },
@@ -871,9 +871,18 @@ Dictionary NativeExtensionAPIDump::generate_extension_api() {
 					Dictionary d2;
 					d2["type"] = get_property_info_type_name(F);
 					d2["name"] = String(property_name);
-					d2["setter"] = ClassDB::get_property_setter(class_name, F.name);
-					d2["getter"] = ClassDB::get_property_getter(class_name, F.name);
-					d2["index"] = ClassDB::get_property_index(class_name, F.name);
+					StringName setter = ClassDB::get_property_setter(class_name, F.name);
+					if (!(setter == "")) {
+						d2["setter"] = setter;
+					}
+					StringName getter = ClassDB::get_property_getter(class_name, F.name);
+					if (!(getter == "")) {
+						d2["getter"] = getter;
+					}
+					int index = ClassDB::get_property_index(class_name, F.name);
+					if (index != -1) {
+						d2["index"] = index;
+					}
 					properties.push_back(d2);
 				}
 
@@ -934,7 +943,7 @@ Dictionary NativeExtensionAPIDump::generate_extension_api() {
 	return api_dump;
 }
 
-void NativeExtensionAPIDump::generate_extension_json_file(const String &p_path) {
+void GDExtensionAPIDump::generate_extension_json_file(const String &p_path) {
 	Dictionary api = generate_extension_api();
 	Ref<JSON> json;
 	json.instantiate();
