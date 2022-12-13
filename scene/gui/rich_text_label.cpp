@@ -714,7 +714,6 @@ int RichTextLabel::_process_line(ItemFrame *p_frame, const Vector2 &p_ofs, int &
 
 				if (p_mode != PROCESS_CACHE) {
 					lh = line < l.height_caches.size() ? l.height_caches[line] : 1;
-					line_is_blank = true;
 				}
 
 			} break;
@@ -1164,6 +1163,8 @@ Control::CursorShape RichTextLabel::get_cursor_shape(const Point2 &p_pos) const 
 }
 
 void RichTextLabel::_gui_input(Ref<InputEvent> p_event) {
+	ERR_FAIL_COND(p_event.is_null());
+
 	Ref<InputEventMouseButton> b = p_event;
 
 	if (b.is_valid()) {
