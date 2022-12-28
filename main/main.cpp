@@ -2121,7 +2121,7 @@ Error Main::setup2(Thread::ID p_main_tid_override) {
 
 	MAIN_PRINT("Main: Setup Logo");
 
-#if defined(WEB_ENABLED) || defined(ANDROID_ENABLED)
+#if !defined(TOOLS_ENABLED) && (defined(WEB_ENABLED) || defined(ANDROID_ENABLED))
 	bool show_logo = false;
 #else
 	bool show_logo = true;
@@ -2594,6 +2594,7 @@ bool Main::start() {
 	}
 
 	if (dump_gdextension_interface || dump_extension_api) {
+		OS::get_singleton()->set_exit_code(EXIT_SUCCESS);
 		return false;
 	}
 

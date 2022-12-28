@@ -543,10 +543,6 @@ class RenderingDeviceVulkan : public RenderingDevice {
 	// As a result, we need to figure out quickly when something is no longer "compatible".
 	// in order to avoid costly rebinds.
 
-	enum {
-		MAX_UNIFORM_SETS = 16
-	};
-
 	struct UniformInfo {
 		UniformType type = UniformType::UNIFORM_TYPE_MAX;
 		bool writable = false;
@@ -628,8 +624,8 @@ class RenderingDeviceVulkan : public RenderingDevice {
 		uint32_t fragment_output_mask = 0;
 
 		struct PushConstant {
-			uint32_t push_constant_size = 0;
-			uint32_t push_constants_vk_stage = 0;
+			uint32_t size = 0;
+			uint32_t vk_stages_mask = 0;
 		};
 
 		PushConstant push_constant;
@@ -791,7 +787,7 @@ class RenderingDeviceVulkan : public RenderingDevice {
 		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE; // Not owned, needed for push constants.
 		VkPipeline pipeline = VK_NULL_HANDLE;
 		uint32_t push_constant_size = 0;
-		uint32_t push_constant_stages = 0;
+		uint32_t push_constant_stages_mask = 0;
 	};
 
 	RID_Owner<RenderPipeline, true> render_pipeline_owner;
@@ -802,7 +798,7 @@ class RenderingDeviceVulkan : public RenderingDevice {
 		VkPipelineLayout pipeline_layout = VK_NULL_HANDLE; // Not owned, needed for push constants.
 		VkPipeline pipeline = VK_NULL_HANDLE;
 		uint32_t push_constant_size = 0;
-		uint32_t push_constant_stages = 0;
+		uint32_t push_constant_stages_mask = 0;
 		uint32_t local_group_size[3] = { 0, 0, 0 };
 	};
 
@@ -1117,7 +1113,7 @@ public:
 	/*****************/
 
 	virtual RID uniform_buffer_create(uint32_t p_size_bytes, const Vector<uint8_t> &p_data = Vector<uint8_t>());
-	virtual RID storage_buffer_create(uint32_t p_size_bytes, const Vector<uint8_t> &p_data = Vector<uint8_t>(), uint32_t p_usage = 0);
+	virtual RID storage_buffer_create(uint32_t p_size_bytes, const Vector<uint8_t> &p_data = Vector<uint8_t>(), BitField<StorageBufferUsage> p_usage = 0);
 	virtual RID texture_buffer_create(uint32_t p_size_elements, DataFormat p_format, const Vector<uint8_t> &p_data = Vector<uint8_t>());
 
 	virtual RID uniform_set_create(const Vector<Uniform> &p_uniforms, RID p_shader, uint32_t p_shader_set);
