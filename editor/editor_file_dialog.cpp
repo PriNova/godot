@@ -1,32 +1,32 @@
-/*************************************************************************/
-/*  editor_file_dialog.cpp                                               */
-/*************************************************************************/
-/*                       This file is part of:                           */
-/*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
-/*************************************************************************/
-/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
-/*                                                                       */
-/* Permission is hereby granted, free of charge, to any person obtaining */
-/* a copy of this software and associated documentation files (the       */
-/* "Software"), to deal in the Software without restriction, including   */
-/* without limitation the rights to use, copy, modify, merge, publish,   */
-/* distribute, sublicense, and/or sell copies of the Software, and to    */
-/* permit persons to whom the Software is furnished to do so, subject to */
-/* the following conditions:                                             */
-/*                                                                       */
-/* The above copyright notice and this permission notice shall be        */
-/* included in all copies or substantial portions of the Software.       */
-/*                                                                       */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
-/*************************************************************************/
+/**************************************************************************/
+/*  editor_file_dialog.cpp                                                */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
 
 #include "editor_file_dialog.h"
 
@@ -620,12 +620,16 @@ void EditorFileDialog::_item_list_item_rmb_clicked(int p_item, const Vector2 &p_
 	if (allow_delete) {
 		item_menu->add_icon_item(theme_cache.action_delete, TTR("Delete"), ITEM_MENU_DELETE, Key::KEY_DELETE);
 	}
+
+#if !defined(ANDROID_ENABLED) && !defined(WEB_ENABLED)
+	// Opening the system file manager is not supported on the Android and web editors.
 	if (single_item_selected) {
 		item_menu->add_separator();
 		Dictionary item_meta = item_list->get_item_metadata(p_item);
 		String item_text = item_meta["dir"] ? TTR("Open in File Manager") : TTR("Show in File Manager");
 		item_menu->add_icon_item(theme_cache.filesystem, item_text, ITEM_MENU_SHOW_IN_EXPLORER);
 	}
+#endif
 
 	if (item_menu->get_item_count() > 0) {
 		item_menu->set_position(item_list->get_screen_position() + p_pos);
@@ -655,8 +659,11 @@ void EditorFileDialog::_item_list_empty_clicked(const Vector2 &p_pos, MouseButto
 		item_menu->add_icon_item(theme_cache.folder, TTR("New Folder..."), ITEM_MENU_NEW_FOLDER, KeyModifierMask::CMD_OR_CTRL | Key::N);
 	}
 	item_menu->add_icon_item(theme_cache.reload, TTR("Refresh"), ITEM_MENU_REFRESH, Key::F5);
+#if !defined(ANDROID_ENABLED) && !defined(WEB_ENABLED)
+	// Opening the system file manager is not supported on the Android and web editors.
 	item_menu->add_separator();
 	item_menu->add_icon_item(theme_cache.filesystem, TTR("Open in File Manager"), ITEM_MENU_SHOW_IN_EXPLORER);
+#endif
 
 	item_menu->set_position(item_list->get_screen_position() + p_pos);
 	item_menu->reset_size();
@@ -1500,7 +1507,7 @@ void EditorFileDialog::_go_back() {
 }
 
 void EditorFileDialog::_go_forward() {
-	if (local_history_pos == local_history.size() - 1) {
+	if (local_history_pos >= local_history.size() - 1) {
 		return;
 	}
 

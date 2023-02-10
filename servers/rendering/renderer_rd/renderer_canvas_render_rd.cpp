@@ -1,32 +1,32 @@
-/*************************************************************************/
-/*  renderer_canvas_render_rd.cpp                                        */
-/*************************************************************************/
-/*                       This file is part of:                           */
-/*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
-/*************************************************************************/
-/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
-/*                                                                       */
-/* Permission is hereby granted, free of charge, to any person obtaining */
-/* a copy of this software and associated documentation files (the       */
-/* "Software"), to deal in the Software without restriction, including   */
-/* without limitation the rights to use, copy, modify, merge, publish,   */
-/* distribute, sublicense, and/or sell copies of the Software, and to    */
-/* permit persons to whom the Software is furnished to do so, subject to */
-/* the following conditions:                                             */
-/*                                                                       */
-/* The above copyright notice and this permission notice shall be        */
-/* included in all copies or substantial portions of the Software.       */
-/*                                                                       */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
-/*************************************************************************/
+/**************************************************************************/
+/*  renderer_canvas_render_rd.cpp                                         */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
 
 #include "renderer_canvas_render_rd.h"
 
@@ -455,7 +455,7 @@ void RendererCanvasRenderRD::_render_item(RD::DrawListID p_draw_list, RID p_rend
 
 				light_count++;
 
-				if (light_count == MAX_LIGHTS_PER_ITEM) {
+				if (light_count == MAX_LIGHTS_PER_ITEM - 1) {
 					break;
 				}
 			}
@@ -525,10 +525,12 @@ void RendererCanvasRenderRD::_render_item(RD::DrawListID p_draw_list, RID p_rend
 
 					if (rect->flags & CANVAS_RECT_FLIP_H) {
 						src_rect.size.x *= -1;
+						push_constant.flags |= FLAGS_FLIP_H;
 					}
 
 					if (rect->flags & CANVAS_RECT_FLIP_V) {
 						src_rect.size.y *= -1;
+						push_constant.flags |= FLAGS_FLIP_V;
 					}
 
 					if (rect->flags & CANVAS_RECT_TRANSPOSE) {
@@ -1429,6 +1431,7 @@ void RendererCanvasRenderRD::canvas_render_items(RID p_to_render_target, Item *p
 					const Item::CommandMesh *cm = static_cast<const Item::CommandMesh *>(c);
 					if (cm->mesh_instance.is_valid()) {
 						mesh_storage->mesh_instance_check_for_update(cm->mesh_instance);
+						mesh_storage->mesh_instance_set_canvas_item_transform(cm->mesh_instance, canvas_transform_inverse * ci->final_transform);
 						update_skeletons = true;
 					}
 				}
@@ -1547,6 +1550,9 @@ void RendererCanvasRenderRD::light_set_texture(RID p_rid, RID p_texture) {
 	if (cl->texture == p_texture) {
 		return;
 	}
+
+	ERR_FAIL_COND(p_texture.is_valid() && !texture_storage->owns_texture(p_texture));
+
 	if (cl->texture.is_valid()) {
 		texture_storage->texture_remove_from_decal_atlas(cl->texture);
 	}
@@ -2034,7 +2040,6 @@ void RendererCanvasRenderRD::CanvasShaderData::set_code(const String &p_code) {
 	actions.render_mode_values["blend_premul_alpha"] = Pair<int *, int>(&blend_mode, BLEND_MODE_PMALPHA);
 	actions.render_mode_values["blend_disabled"] = Pair<int *, int>(&blend_mode, BLEND_MODE_DISABLED);
 
-	actions.usage_flag_pointers["SCREEN_TEXTURE"] = &uses_screen_texture;
 	actions.usage_flag_pointers["texture_sdf"] = &uses_sdf;
 	actions.usage_flag_pointers["TIME"] = &uses_time;
 
@@ -2046,6 +2051,7 @@ void RendererCanvasRenderRD::CanvasShaderData::set_code(const String &p_code) {
 	ERR_FAIL_COND_MSG(err != OK, "Shader compilation failed.");
 
 	uses_screen_texture_mipmaps = gen_code.uses_screen_texture_mipmaps;
+	uses_screen_texture = gen_code.uses_screen_texture;
 
 	if (version.is_null()) {
 		version = canvas_singleton->shader.canvas_shader.version_create();
@@ -2423,7 +2429,6 @@ RendererCanvasRenderRD::RendererCanvasRenderRD() {
 		actions.renames["SPECULAR_SHININESS_TEXTURE"] = "specular_texture";
 		actions.renames["SPECULAR_SHININESS"] = "specular_shininess";
 		actions.renames["SCREEN_UV"] = "screen_uv";
-		actions.renames["SCREEN_TEXTURE"] = "screen_texture";
 		actions.renames["SCREEN_PIXEL_SIZE"] = "canvas_data.screen_pixel_size";
 		actions.renames["FRAGCOORD"] = "gl_FragCoord";
 		actions.renames["POINT_COORD"] = "gl_PointCoord";
@@ -2444,7 +2449,6 @@ RendererCanvasRenderRD::RendererCanvasRenderRD() {
 		actions.renames["screen_uv_to_sdf"] = "screen_uv_to_sdf";
 
 		actions.usage_defines["COLOR"] = "#define COLOR_USED\n";
-		actions.usage_defines["SCREEN_TEXTURE"] = "#define SCREEN_TEXTURE_USED\n";
 		actions.usage_defines["SCREEN_UV"] = "#define SCREEN_UV_USED\n";
 		actions.usage_defines["SCREEN_PIXEL_SIZE"] = "@SCREEN_UV";
 		actions.usage_defines["NORMAL"] = "#define NORMAL_USED\n";
@@ -2459,7 +2463,6 @@ RendererCanvasRenderRD::RendererCanvasRenderRD() {
 		actions.custom_samplers["TEXTURE"] = "texture_sampler";
 		actions.custom_samplers["NORMAL_TEXTURE"] = "texture_sampler";
 		actions.custom_samplers["SPECULAR_SHININESS_TEXTURE"] = "texture_sampler";
-		actions.custom_samplers["SCREEN_TEXTURE"] = "material_samplers[3]"; //mipmap and filter for screen texture
 		actions.sampler_array_name = "material_samplers";
 		actions.base_texture_binding_index = 1;
 		actions.texture_layout_set = MATERIAL_UNIFORM_SET;
@@ -2631,9 +2634,12 @@ RendererCanvasRenderRD::RendererCanvasRenderRD() {
 // Default CanvasGroup shader.
 
 shader_type canvas_item;
+render_mode unshaded;
+
+uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_nearest;
 
 void fragment() {
-	vec4 c = textureLod(SCREEN_TEXTURE, SCREEN_UV, 0.0);
+	vec4 c = textureLod(screen_texture, SCREEN_UV, 0.0);
 
 	if (c.a > 0.0001) {
 		c.rgb /= c.a;
@@ -2656,9 +2662,12 @@ void fragment() {
 // Default clip children shader.
 
 shader_type canvas_item;
+render_mode unshaded;
+
+uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_nearest;
 
 void fragment() {
-	vec4 c = textureLod(SCREEN_TEXTURE, SCREEN_UV, 0.0);
+	vec4 c = textureLod(screen_texture, SCREEN_UV, 0.0);
 	COLOR.rgb = c.rgb;
 }
 )");

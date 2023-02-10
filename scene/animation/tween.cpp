@@ -1,32 +1,32 @@
-/*************************************************************************/
-/*  tween.cpp                                                            */
-/*************************************************************************/
-/*                       This file is part of:                           */
-/*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
-/*************************************************************************/
-/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
-/*                                                                       */
-/* Permission is hereby granted, free of charge, to any person obtaining */
-/* a copy of this software and associated documentation files (the       */
-/* "Software"), to deal in the Software without restriction, including   */
-/* without limitation the rights to use, copy, modify, merge, publish,   */
-/* distribute, sublicense, and/or sell copies of the Software, and to    */
-/* permit persons to whom the Software is furnished to do so, subject to */
-/* the following conditions:                                             */
-/*                                                                       */
-/* The above copyright notice and this permission notice shall be        */
-/* included in all copies or substantial portions of the Software.       */
-/*                                                                       */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
-/*************************************************************************/
+/**************************************************************************/
+/*  tween.cpp                                                             */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
 
 #include "tween.h"
 
@@ -60,7 +60,7 @@ void Tweener::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("finished"));
 }
 
-void Tween::start_tweeners() {
+void Tween::_start_tweeners() {
 	if (tweeners.is_empty()) {
 		dead = true;
 		ERR_FAIL_MSG("Tween without commands, aborting.");
@@ -68,6 +68,15 @@ void Tween::start_tweeners() {
 
 	for (Ref<Tweener> &tweener : tweeners.write[current_step]) {
 		tweener->start();
+	}
+}
+
+void Tween::_stop_internal(bool p_reset) {
+	running = false;
+	if (p_reset) {
+		started = false;
+		dead = false;
+		total_time = 0;
 	}
 }
 
@@ -135,14 +144,11 @@ void Tween::append(Ref<Tweener> p_tweener) {
 }
 
 void Tween::stop() {
-	started = false;
-	running = false;
-	dead = false;
-	total_time = 0;
+	_stop_internal(true);
 }
 
 void Tween::pause() {
-	running = false;
+	_stop_internal(false);
 }
 
 void Tween::play() {
@@ -274,11 +280,20 @@ bool Tween::step(double p_delta) {
 	}
 
 	if (!started) {
-		ERR_FAIL_COND_V_MSG(tweeners.is_empty(), false, "Tween started, but has no Tweeners.");
+		if (tweeners.is_empty()) {
+			String tween_id;
+			Node *node = get_bound_node();
+			if (node) {
+				tween_id = vformat("Tween (bound to %s)", node->is_inside_tree() ? (String)node->get_path() : (String)node->get_name());
+			} else {
+				tween_id = to_string();
+			}
+			ERR_FAIL_V_MSG(false, tween_id + ": started with no Tweeners.");
+		}
 		current_step = 0;
 		loops_done = 0;
 		total_time = 0;
-		start_tweeners();
+		_start_tweeners();
 		started = true;
 	}
 
@@ -319,7 +334,7 @@ bool Tween::step(double p_delta) {
 				} else {
 					emit_signal(SNAME("loop_finished"), loops_done);
 					current_step = 0;
-					start_tweeners();
+					_start_tweeners();
 #ifdef DEBUG_ENABLED
 					if (loops <= 0 && Math::is_equal_approx(rem_delta, initial_delta)) {
 						if (!potential_infinite) {
@@ -332,7 +347,7 @@ bool Tween::step(double p_delta) {
 #endif
 				}
 			} else {
-				start_tweeners();
+				_start_tweeners();
 			}
 		}
 	}
@@ -384,6 +399,15 @@ Variant Tween::interpolate_variant(Variant p_initial_val, Variant p_delta_val, d
 
 	Variant ret = Animation::add_variant(p_initial_val, p_delta_val);
 	ret = Animation::interpolate_variant(p_initial_val, ret, run_equation(p_trans, p_ease, p_time, 0.0, 1.0, p_duration));
+	return ret;
+}
+
+String Tween::to_string() {
+	String ret = Object::to_string();
+	Node *node = get_bound_node();
+	if (node) {
+		ret += vformat(" (bound to %s)", node->get_name());
+	}
 	return ret;
 }
 
@@ -563,10 +587,14 @@ PropertyTweener::PropertyTweener(Object *p_target, NodePath p_property, Variant 
 	base_final_val = p_to;
 	final_val = base_final_val;
 	duration = p_duration;
+
+	if (p_target->is_ref_counted()) {
+		ref_copy = p_target;
+	}
 }
 
 PropertyTweener::PropertyTweener() {
-	ERR_FAIL_MSG("Can't create empty PropertyTweener. Use get_tree().tween_property() or tween_property() instead.");
+	ERR_FAIL_MSG("PropertyTweener can't be created directly. Use the tween_property() method in Tween.");
 }
 
 void IntervalTweener::start() {
@@ -597,7 +625,7 @@ IntervalTweener::IntervalTweener(double p_time) {
 }
 
 IntervalTweener::IntervalTweener() {
-	ERR_FAIL_MSG("Can't create empty IntervalTweener. Use get_tree().tween_interval() instead.");
+	ERR_FAIL_MSG("IntervalTweener can't be created directly. Use the tween_interval() method in Tween.");
 }
 
 Ref<CallbackTweener> CallbackTweener::set_delay(double p_delay) {
@@ -640,10 +668,15 @@ void CallbackTweener::_bind_methods() {
 
 CallbackTweener::CallbackTweener(Callable p_callback) {
 	callback = p_callback;
+
+	Object *callback_instance = p_callback.get_object();
+	if (callback_instance && callback_instance->is_ref_counted()) {
+		ref_copy = callback_instance;
+	}
 }
 
 CallbackTweener::CallbackTweener() {
-	ERR_FAIL_MSG("Can't create empty CallbackTweener. Use get_tree().tween_callback() instead.");
+	ERR_FAIL_MSG("CallbackTweener can't be created directly. Use the tween_callback() method in Tween.");
 }
 
 Ref<MethodTweener> MethodTweener::set_delay(double p_delay) {
@@ -728,8 +761,13 @@ MethodTweener::MethodTweener(Callable p_callback, Variant p_from, Variant p_to, 
 	delta_val = Animation::subtract_variant(p_to, p_from);
 	final_val = p_to;
 	duration = p_duration;
+
+	Object *callback_instance = p_callback.get_object();
+	if (callback_instance && callback_instance->is_ref_counted()) {
+		ref_copy = callback_instance;
+	}
 }
 
 MethodTweener::MethodTweener() {
-	ERR_FAIL_MSG("Can't create empty MethodTweener. Use get_tree().tween_method() instead.");
+	ERR_FAIL_MSG("MethodTweener can't be created directly. Use the tween_method() method in Tween.");
 }

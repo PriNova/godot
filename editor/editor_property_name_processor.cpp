@@ -1,35 +1,36 @@
-/*************************************************************************/
-/*  editor_property_name_processor.cpp                                   */
-/*************************************************************************/
-/*                       This file is part of:                           */
-/*                           GODOT ENGINE                                */
-/*                      https://godotengine.org                          */
-/*************************************************************************/
-/* Copyright (c) 2007-2022 Juan Linietsky, Ariel Manzur.                 */
-/* Copyright (c) 2014-2022 Godot Engine contributors (cf. AUTHORS.md).   */
-/*                                                                       */
-/* Permission is hereby granted, free of charge, to any person obtaining */
-/* a copy of this software and associated documentation files (the       */
-/* "Software"), to deal in the Software without restriction, including   */
-/* without limitation the rights to use, copy, modify, merge, publish,   */
-/* distribute, sublicense, and/or sell copies of the Software, and to    */
-/* permit persons to whom the Software is furnished to do so, subject to */
-/* the following conditions:                                             */
-/*                                                                       */
-/* The above copyright notice and this permission notice shall be        */
-/* included in all copies or substantial portions of the Software.       */
-/*                                                                       */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,       */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF    */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.*/
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY  */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,  */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE     */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                */
-/*************************************************************************/
+/**************************************************************************/
+/*  editor_property_name_processor.cpp                                    */
+/**************************************************************************/
+/*                         This file is part of:                          */
+/*                             GODOT ENGINE                               */
+/*                        https://godotengine.org                         */
+/**************************************************************************/
+/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
+/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
 
 #include "editor_property_name_processor.h"
 
+#include "core/string/translation.h"
 #include "editor_settings.h"
 
 EditorPropertyNameProcessor *EditorPropertyNameProcessor::singleton = nullptr;
@@ -92,18 +93,30 @@ String EditorPropertyNameProcessor::process_name(const String &p_name, Style p_s
 		} break;
 
 		case STYLE_LOCALIZED: {
-			return TTRGET(_capitalize_name(p_name));
+			const String capitalized = _capitalize_name(p_name);
+			if (TranslationServer::get_singleton()) {
+				return TranslationServer::get_singleton()->property_translate(capitalized);
+			}
+			return capitalized;
 		} break;
 	}
 	ERR_FAIL_V_MSG(p_name, "Unexpected property name style.");
+}
+
+String EditorPropertyNameProcessor::translate_group_name(const String &p_name) const {
+	if (TranslationServer::get_singleton()) {
+		return TranslationServer::get_singleton()->property_translate(p_name);
+	}
+	return p_name;
 }
 
 EditorPropertyNameProcessor::EditorPropertyNameProcessor() {
 	ERR_FAIL_COND(singleton != nullptr);
 	singleton = this;
 
-	// The following initialization is parsed in `editor/translations/extract.py` with a regex.
+	// The following initialization is parsed by the l10n extraction script with a regex.
 	// The map name and value definition format should be kept synced with the regex.
+	// https://github.com/godotengine/godot-editor-l10n/blob/main/scripts/common.py
 	capitalize_string_remaps["2d"] = "2D";
 	capitalize_string_remaps["3d"] = "3D";
 	capitalize_string_remaps["aa"] = "AA";
@@ -115,6 +128,7 @@ EditorPropertyNameProcessor::EditorPropertyNameProcessor() {
 	capitalize_string_remaps["arm64-v8a"] = "arm64-v8a";
 	capitalize_string_remaps["armeabi-v7a"] = "armeabi-v7a";
 	capitalize_string_remaps["arvr"] = "ARVR";
+	capitalize_string_remaps["astc"] = "ASTC";
 	capitalize_string_remaps["bg"] = "BG";
 	capitalize_string_remaps["bidi"] = "BiDi";
 	capitalize_string_remaps["bp"] = "BP";
@@ -211,6 +225,7 @@ EditorPropertyNameProcessor::EditorPropertyNameProcessor() {
 	capitalize_string_remaps["rmb"] = "RMB";
 	capitalize_string_remaps["rpc"] = "RPC";
 	capitalize_string_remaps["s3tc"] = "S3TC";
+	capitalize_string_remaps["scp"] = "SCP";
 	capitalize_string_remaps["sdf"] = "SDF";
 	capitalize_string_remaps["sdfgi"] = "SDFGI";
 	capitalize_string_remaps["sdk"] = "SDK";
@@ -261,7 +276,7 @@ EditorPropertyNameProcessor::EditorPropertyNameProcessor() {
 	capitalize_string_remaps["yz"] = "YZ";
 
 	// Articles, conjunctions, prepositions.
-	// The following initialization is parsed in `editor/translations/extract.py` with a regex.
+	// The following initialization is parsed in `editor/translations/scripts/common.py` with a regex.
 	// The word definition format should be kept synced with the regex.
 	stop_words = LocalVector<String>({
 			"a",
